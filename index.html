@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Kelvin The Diver v5.6</title>
+<title>Kelvin The Diver v5.7</title>
 <style>
 
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;800&display=swap');
@@ -19,8 +19,6 @@
         }
 
         canvas { display: block; }
-
-        /* Error Display */
 
         #error-log {
 
@@ -298,15 +296,11 @@
 
 /**
 
- * Deep Blue Diver v5.6 - The Vessel Update
+ * Deep Blue Diver v5.7 - Power-Ups Update
 
- * New: Enhanced Boat graphics with bobbing animation.
-
- * Inherits: Texture engine, Hotfixes, Polyfills.
+ * New: Shield Pickup (Invincibility) and Cargo Box (Double Capacity)
 
  */
-
-// Error Handler
 
 window.onerror = function(msg, url, lineNo, columnNo, error) {
 
@@ -327,8 +321,6 @@ const ctx = canvas.getContext('2d');
 const maskCanvas = document.createElement('canvas');
 
 const maskCtx = maskCanvas.getContext('2d');
-
-// --- Polyfills ---
 
 function drawRoundRect(ctx, x, y, w, h, r) {
 
@@ -353,8 +345,6 @@ function drawRoundRect(ctx, x, y, w, h, r) {
     ctx.fill();
 
 }
-
-// --- Textures ---
 
 let patRock, patSand;
 
@@ -416,7 +406,17 @@ const player = {
 
     dashCd: 0, isDashing: false,
 
-    maxO2: 100, curO2: 100, cash: 0, inventory: [], capacity: 10,
+    // Stats
+
+    maxO2: 100, curO2: 100, cash: 0, inventory: [], 
+
+    capacity: 10,
+
+    // Powerup States
+
+    invincibleTimer: 0,
+
+    doubleCapacity: false,
 
     tankLvl: 1, suitLvl: 1, powLvl: 1,
 
@@ -436,7 +436,7 @@ const input = {
 
 };
 
-let fishes = [], bubbles = [], o2Bubbles = [], mines = [], chests = [], floatingTexts = [], lightRays = [];
+let fishes = [], bubbles = [], o2Bubbles = [], powerups = [], mines = [], chests = [], floatingTexts = [], lightRays = [];
 
 let rocksL = [], rocksR = [], parallaxMounts = [], particles = [];
 
@@ -510,7 +510,7 @@ window.addEventListener('resize', resize);
 
 function genTerrain() {
 
-    rocksL = []; rocksR = []; parallaxMounts = []; mines = []; chests = [];
+    rocksL = []; rocksR = []; parallaxMounts = []; mines = []; chests = []; powerups = [];
 
     for(let i=0; i<15; i++) {
 
@@ -658,6 +658,8 @@ function update(dt) {
 
     if(player.dashCd > 0) player.dashCd -= dt;
 
+    if(player.invincibleTimer > 0) player.invincibleTimer -= dt;
+
     if(Math.abs(player.vx) < 400) player.isDashing = false;
 
     let dx = 0, dy = 0;
@@ -740,7 +742,17 @@ function update(dt) {
 
             explodeMine(m);
 
-            player.curO2 -= 30; spawnText("-30 AIR", player.x, player.y, '#ff4757');
+            if (player.invincibleTimer <= 0) {
+
+                player.curO2 -= 30; 
+
+                spawnText("-30 AIR", player.x, player.y, '#ff4757');
+
+            } else {
+
+                spawnText("BLOCKED!", player.x, player.y, '#00ffff');
+
+            }
 
             let ang = Math.atan2(player.y - m.y, player.x - m.x);
 
@@ -928,13 +940,25 @@ function updateFish(dt) {
 
                 if(dist < 40 * f.scale && !player.isDashing) {
 
-                    player.curO2 -= (f.isBoss ? 40 : 15); state.shake = 10;
+                    if (player.invincibleTimer <= 0) {
 
-                    spawnText((f.isBoss ? "-40" : "-15") + " O2", player.x, player.y, '#e74c3c');
+                        player.curO2 -= (f.isBoss ? 40 : 15); state.shake = 10;
 
-                    player.vx += Math.cos(ang)*400; player.vy += Math.sin(ang)*400;
+                        spawnText((f.isBoss ? "-40" : "-15") + " O2", player.x, player.y, '#e74c3c');
 
-                    f.x -= Math.cos(ang)*100;
+                        player.vx += Math.cos(ang)*400; player.vy += Math.sin(ang)*400;
+
+                        f.x -= Math.cos(ang)*100;
+
+                    } else {
+
+                        // Blocked
+
+                        spawnText("BLOCKED!", player.x, player.y, '#00ffff');
+
+                        player.vx += Math.cos(ang)*200; player.vy += Math.sin(ang)*200;
+
+                    }
 
                 }
 
@@ -958,7 +982,25 @@ function updateBossUI(f) {
 
 function updateEntities(dt) {
 
+    // Spawners
+
     if(Math.random() < 0.005 && player.y > 1000) o2Bubbles.push({x: Math.random()*canvas.width, y: player.y + 600, vy: -60});
+
+    // Powerups Spawner
+
+    if(Math.random() < 0.002 && player.y > 800) {
+
+        powerups.push({
+
+            x: Math.random()*canvas.width, y: player.y + 600, vy: -30,
+
+            type: Math.random() > 0.5 ? 'shield' : 'capacity'
+
+        });
+
+    }
+
+    // O2 Collision
 
     for(let i=o2Bubbles.length-1; i>=0; i--) {
 
@@ -971,6 +1013,44 @@ function updateEntities(dt) {
             spawnText("+25 O2", player.x, player.y, '#2ecc71'); o2Bubbles.splice(i, 1);
 
         } else if (b.y < CFG.waterLevel) o2Bubbles.splice(i, 1);
+
+    }
+
+    // Powerups Collision
+
+    for(let i=powerups.length-1; i>=0; i--) {
+
+        let p = powerups[i]; p.y += p.vy * dt;
+
+        if(Math.hypot(player.x - p.x, player.y - p.y) < 50) {
+
+            if(p.type === 'shield') {
+
+                player.invincibleTimer = 10;
+
+                spawnText("SHIELD!", player.x, player.y, '#00ffff');
+
+            } else {
+
+                if(!player.doubleCapacity) {
+
+                    player.doubleCapacity = true;
+
+                    player.capacity *= 2;
+
+                    spawnText("x2 CARGO", player.x, player.y, '#f1c40f');
+
+                } else {
+
+                    spawnText("EXTENDED!", player.x, player.y, '#f1c40f');
+
+                }
+
+            }
+
+            powerups.splice(i, 1);
+
+        } else if (p.y < CFG.waterLevel) powerups.splice(i, 1);
 
     }
 
@@ -1092,9 +1172,37 @@ function draw() {
 
     });
 
-    fishes.forEach(f => { 
+    powerups.forEach(p => {
 
-        // FIXED: Loop through array to check hooking
+        ctx.save(); ctx.translate(p.x, p.y);
+
+        if(p.type === 'shield') {
+
+            // Shield Icon
+
+            ctx.shadowBlur = 15; ctx.shadowColor = '#00ffff';
+
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.3)'; ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.fill();
+
+            ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.stroke();
+
+        } else {
+
+            // Box Icon
+
+            ctx.shadowBlur = 15; ctx.shadowColor = '#f1c40f';
+
+            ctx.fillStyle = '#f1c40f'; ctx.fillRect(-12, -12, 24, 24);
+
+            ctx.fillStyle = '#e67e22'; ctx.fillRect(-12, -4, 24, 8);
+
+        }
+
+        ctx.restore();
+
+    });
+
+    fishes.forEach(f => { 
 
         let hooked = false;
 
@@ -1144,91 +1252,27 @@ function draw() {
 
     }
 
-    // New Boat Drawing
+    // Boat
 
     ctx.save();
-
-    // Bobbing motion
 
     let bob = Math.sin(state.gameTime * 2) * 5;
 
     let rock = Math.sin(state.gameTime * 1.5) * 0.05;
 
-    ctx.translate(canvas.width/2, CFG.waterLevel + bob);
+    ctx.translate(canvas.width/2, CFG.waterLevel + bob); ctx.rotate(rock);
 
-    ctx.rotate(rock);
+    ctx.fillStyle = '#ecf0f1'; ctx.beginPath(); ctx.moveTo(-70, -20); ctx.lineTo(80, -20); ctx.lineTo(90, 0); ctx.lineTo(70, 20); ctx.lineTo(-60, 20); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#bdc3c7'; ctx.lineWidth = 2; ctx.stroke();
 
-    // Hull
+    ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.moveTo(-60, 20); ctx.lineTo(70, 20); ctx.quadraticCurveTo(50, 40, -50, 40); ctx.closePath(); ctx.fill();
 
-    ctx.fillStyle = '#ecf0f1'; // White top
+    ctx.fillStyle = '#f1c40f'; ctx.fillRect(-20, -50, 50, 30);
 
-    ctx.beginPath();
+    ctx.fillStyle = '#3498db'; ctx.fillRect(-10, -40, 10, 10); ctx.fillRect(10, -40, 10, 10);
 
-    ctx.moveTo(-70, -20);
+    ctx.beginPath(); ctx.moveTo(5, -50); ctx.lineTo(5, -80); ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 3; ctx.stroke();
 
-    ctx.lineTo(80, -20);
-
-    ctx.lineTo(90, 0); // Bow
-
-    ctx.lineTo(70, 20);
-
-    ctx.lineTo(-60, 20);
-
-    ctx.closePath();
-
-    ctx.fill();
-
-    ctx.strokeStyle = '#bdc3c7'; ctx.lineWidth = 2; ctx.stroke();
-
-    // Red Bottom Hull
-
-    ctx.fillStyle = '#e74c3c';
-
-    ctx.beginPath();
-
-    ctx.moveTo(-60, 20);
-
-    ctx.lineTo(70, 20);
-
-    ctx.quadraticCurveTo(50, 40, -50, 40);
-
-    ctx.closePath();
-
-    ctx.fill();
-
-    // Cabin
-
-    ctx.fillStyle = '#f1c40f'; // Yellow cabin
-
-    ctx.fillRect(-20, -50, 50, 30);
-
-    // Windows
-
-    ctx.fillStyle = '#3498db';
-
-    ctx.fillRect(-10, -40, 10, 10);
-
-    ctx.fillRect(10, -40, 10, 10);
-
-    // Mast
-
-    ctx.beginPath();
-
-    ctx.moveTo(5, -50);
-
-    ctx.lineTo(5, -80);
-
-    ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 3; ctx.stroke();
-
-    // Flag
-
-    ctx.fillStyle = '#e74c3c';
-
-    ctx.beginPath();
-
-    ctx.moveTo(5, -80); ctx.lineTo(25, -70); ctx.lineTo(5, -60);
-
-    ctx.fill();
+    ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.moveTo(5, -80); ctx.lineTo(25, -70); ctx.lineTo(5, -60); ctx.fill();
 
     ctx.restore();
 
@@ -1260,6 +1304,16 @@ function drawPlayer() {
 
     ctx.scale(1, flip); ctx.rotate(rot);
 
+    // Shield Effect
+
+    if (player.invincibleTimer > 0) {
+
+        ctx.strokeStyle = `rgba(0, 255, 255, ${Math.abs(Math.sin(state.gameTime*10))})`; 
+
+        ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 35, 0, Math.PI*2); ctx.stroke();
+
+    }
+
     if(player.isDashing) {
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
@@ -1279,8 +1333,6 @@ function drawPlayer() {
     ctx.fillStyle = '#34495e'; ctx.beginPath(); ctx.ellipse(0, 0, 22, 10, 0, 0, Math.PI*2); ctx.fill();
 
     ctx.fillStyle = '#7bed9f'; ctx.beginPath(); ctx.arc(12, -2, 6, 0, Math.PI*2); ctx.fill();
-
-    // Gun
 
     ctx.fillStyle = player.powLvl >= 3 ? '#341f97' : '#95a5a6'; 
 
@@ -1434,27 +1486,17 @@ function drawLighting() {
 
     maskCtx.restore();
 
-    fishes.forEach(f => {
+    [...fishes, ...o2Bubbles, ...powerups].forEach(e => {
 
-        if(f.glow) {
+        if(e.glow || e.type === 'shield' || e.type === 'capacity') {
 
-            let g = maskCtx.createRadialGradient(f.x, f.y-state.camY, 5, f.x, f.y-state.camY, 100);
+            let g = maskCtx.createRadialGradient(e.x, e.y-state.camY, 5, e.x, e.y-state.camY, 100);
 
             g.addColorStop(0, 'rgba(255,255,255,0.8)'); g.addColorStop(1, 'transparent');
 
-            maskCtx.fillStyle = g; maskCtx.beginPath(); maskCtx.arc(f.x, f.y-state.camY, 100, 0, Math.PI*2); maskCtx.fill();
+            maskCtx.fillStyle = g; maskCtx.beginPath(); maskCtx.arc(e.x, e.y-state.camY, 100, 0, Math.PI*2); maskCtx.fill();
 
         }
-
-    });
-
-    o2Bubbles.forEach(b => {
-
-        let g = maskCtx.createRadialGradient(b.x, b.y-state.camY, 5, b.x, b.y-state.camY, 50);
-
-        g.addColorStop(0, 'rgba(255,255,255,0.8)'); g.addColorStop(1, 'transparent');
-
-        maskCtx.fillStyle = g; maskCtx.beginPath(); maskCtx.arc(b.x, b.y-state.camY, 50, 0, Math.PI*2); maskCtx.fill();
 
     });
 
@@ -1467,6 +1509,14 @@ function spawnText(txt, x, y, col) { floatingTexts.push({txt, x, y, col, life: 1
 function openShop() {
 
     state.screen = 'shop'; player.curO2 = player.maxO2;
+
+    // Reset Powerups
+
+    player.doubleCapacity = false;
+
+    player.invincibleTimer = 0;
+
+    player.capacity = (10 + (player.suitLvl-1)*5); // Reset to base
 
     document.getElementById('modal-overlay').style.display = 'flex'; updateShopUI();
 
@@ -1514,7 +1564,19 @@ document.getElementById('buy-tank').addEventListener('click', () => {
 
 document.getElementById('buy-suit').addEventListener('click', () => {
 
-    if(player.cash >= player.suitCost) { player.cash-=player.suitCost; player.capacity+=5; player.suitLvl++; player.suitCost=Math.floor(player.suitCost*1.5); updateShopUI(); }
+    if(player.cash >= player.suitCost) { 
+
+        player.cash-=player.suitCost; 
+
+        player.capacity = (10 + (player.suitLvl)*5); // Immediate update
+
+        player.suitLvl++; 
+
+        player.suitCost=Math.floor(player.suitCost*1.5); 
+
+        updateShopUI(); 
+
+    }
 
 });
 
