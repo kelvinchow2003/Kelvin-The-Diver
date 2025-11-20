@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Deep Blue Diver v5.4</title>
+<title>Kelvin The Diver v5.6</title>
 <style>
 
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;800&display=swap');
@@ -298,11 +298,11 @@
 
 /**
 
- * Deep Blue Diver v5.4 - Hotfix
+ * Deep Blue Diver v5.6 - The Vessel Update
 
- * Fixed: Removed reference to undefined 'player.harpoon' object.
+ * New: Enhanced Boat graphics with bobbing animation.
 
- * Fixed: Implemented 'drawRoundedRect' polyfill for compatibility.
+ * Inherits: Texture engine, Hotfixes, Polyfills.
 
  */
 
@@ -424,7 +424,7 @@ const player = {
 
     harpoonDmg: 1, harpoonCount: 1,
 
-    harpoons: [] // Array of harpoons
+    harpoons: [] 
 
 };
 
@@ -1144,11 +1144,93 @@ function draw() {
 
     }
 
-    ctx.save(); ctx.translate(canvas.width/2, CFG.waterLevel);
+    // New Boat Drawing
 
-    ctx.fillStyle = '#e55039'; ctx.fillRect(-60, -30, 120, 35);
+    ctx.save();
 
-    ctx.fillStyle = '#ecf0f1'; ctx.fillRect(-10, -60, 40, 30); ctx.restore();
+    // Bobbing motion
+
+    let bob = Math.sin(state.gameTime * 2) * 5;
+
+    let rock = Math.sin(state.gameTime * 1.5) * 0.05;
+
+    ctx.translate(canvas.width/2, CFG.waterLevel + bob);
+
+    ctx.rotate(rock);
+
+    // Hull
+
+    ctx.fillStyle = '#ecf0f1'; // White top
+
+    ctx.beginPath();
+
+    ctx.moveTo(-70, -20);
+
+    ctx.lineTo(80, -20);
+
+    ctx.lineTo(90, 0); // Bow
+
+    ctx.lineTo(70, 20);
+
+    ctx.lineTo(-60, 20);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    ctx.strokeStyle = '#bdc3c7'; ctx.lineWidth = 2; ctx.stroke();
+
+    // Red Bottom Hull
+
+    ctx.fillStyle = '#e74c3c';
+
+    ctx.beginPath();
+
+    ctx.moveTo(-60, 20);
+
+    ctx.lineTo(70, 20);
+
+    ctx.quadraticCurveTo(50, 40, -50, 40);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    // Cabin
+
+    ctx.fillStyle = '#f1c40f'; // Yellow cabin
+
+    ctx.fillRect(-20, -50, 50, 30);
+
+    // Windows
+
+    ctx.fillStyle = '#3498db';
+
+    ctx.fillRect(-10, -40, 10, 10);
+
+    ctx.fillRect(10, -40, 10, 10);
+
+    // Mast
+
+    ctx.beginPath();
+
+    ctx.moveTo(5, -50);
+
+    ctx.lineTo(5, -80);
+
+    ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 3; ctx.stroke();
+
+    // Flag
+
+    ctx.fillStyle = '#e74c3c';
+
+    ctx.beginPath();
+
+    ctx.moveTo(5, -80); ctx.lineTo(25, -70); ctx.lineTo(5, -60);
+
+    ctx.fill();
+
+    ctx.restore();
 
     drawLighting();
 
@@ -1506,9 +1588,11 @@ function loop(now) {
 
     } catch (e) {
 
+        // Last resort crash handler
+
         document.getElementById('error-log').style.display = 'block';
 
-        document.getElementById('error-log').innerText = "CRASH: " + e.message;
+        document.getElementById('error-log').innerText = "CRITICAL ERROR: " + e.message;
 
     }
 
