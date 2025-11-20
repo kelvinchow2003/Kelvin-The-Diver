@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Kelvin The Diver v5.7</title>
+<title>Kelvin The Diver v6.0</title>
 <style>
 
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;800&display=swap');
@@ -296,9 +296,11 @@
 
 /**
 
- * Deep Blue Diver v5.7 - Power-Ups Update
+ * Deep Blue Diver v6.2 - The Angler's Maw
 
- * New: Shield Pickup (Invincibility) and Cargo Box (Double Capacity)
+ * Changes: 
+
+ * 1. Completely redesigned Anglerfish with a more prominent jaw and a full set of needle-like teeth, as requested.
 
  */
 
@@ -392,7 +394,7 @@ const CFG = {
 
     gravity: 40, waterLevel: 200, seaFloor: 8000,
 
-    colors: { sky: '#87CEEB', surface: '#006994', deep: '#000810' },
+    colors: { sky: ['#87CEEB', '#B0E0E6'], surface: ['#006994', '#001e3c', '#000810'] },
 
     darkDepth: 600
 
@@ -406,17 +408,9 @@ const player = {
 
     dashCd: 0, isDashing: false,
 
-    // Stats
+    maxO2: 100, curO2: 100, cash: 0, inventory: [], capacity: 10,
 
-    maxO2: 100, curO2: 100, cash: 0, inventory: [], 
-
-    capacity: 10,
-
-    // Powerup States
-
-    invincibleTimer: 0,
-
-    doubleCapacity: false,
+    invincibleTimer: 0, doubleCapacity: false,
 
     tankLvl: 1, suitLvl: 1, powLvl: 1,
 
@@ -438,9 +432,11 @@ const input = {
 
 let fishes = [], bubbles = [], o2Bubbles = [], powerups = [], mines = [], chests = [], floatingTexts = [], lightRays = [];
 
-let rocksL = [], rocksR = [], parallaxMounts = [], particles = [];
+let rocksL = [], rocksR = [], particles = [], ambientBubbles = [];
 
 let waveOffset = 0;
+
+// Updated Leviathan speed to 240
 
 const FISH_TYPES = [
 
@@ -448,13 +444,15 @@ const FISH_TYPES = [
 
     { name: "Bluefin", depth: [500, 2000], hp: 3, val: 40, w: 3, spd: 140, col: '#0984e3', scale: 1.1, type: 'med' },
 
-    { name: "Puffer", depth: [200, 1500], hp: 2, val: 50, w: 2, spd: 80, col: '#fdcb6e', scale: 1.0, type: 'round', spikes: true },
+    { name: "Puffer", depth: [200, 1500], hp: 2, val: 50, w: 2, spd: 80, col: '#fdcb6e', scale: 1.0, type: 'puffer', spikes: true },
 
     { name: "Jelly", depth: [1500, 4000], hp: 4, val: 90, w: 1, spd: 50, col: '#e056fd', scale: 1.4, type: 'jelly', aggro: true, glow: true },
 
-    { name: "Angler", depth: [3000, 7500], hp: 8, val: 250, w: 8, spd: 180, col: '#6c5ce7', scale: 2.0, type: 'big', aggro: true, glow: true },
+    { name: "Stingray", depth: [2500, 6000], hp: 6, val: 120, w: 4, spd: 90, col: '#a29bfe', scale: 1.5, type: 'ray', aggro: false },
 
-    { name: "LEVIATHAN", depth: [7800, 8500], hp: 120, val: 5000, w: 50, spd: 120, col: '#d63031', scale: 8.0, type: 'boss', aggro: true, glow: true, isBoss: true }
+    { name: "Angler", depth: [3000, 7500], hp: 8, val: 250, w: 8, spd: 160, col: '#4834d4', scale: 2.2, type: 'angler', aggro: true, glow: true },
+
+    { name: "LEVIATHAN", depth: [7800, 8500], hp: 120, val: 5000, w: 50, spd: 240, col: '#d63031', scale: 1.0, type: 'boss', aggro: true, glow: true, isBoss: true }
 
 ];
 
@@ -474,7 +472,9 @@ function init() {
 
         for(let i=0; i<60; i++) particles.push({ x: Math.random()*canvas.width, y: Math.random()*CFG.seaFloor, s: Math.random()*2, v: Math.random()*10+5 });
 
-        for(let i=0; i<8; i++) lightRays.push({x: Math.random()*canvas.width, w: 50+Math.random()*100, a: Math.random(), s: 0.2+Math.random()*0.3});
+        for(let i=0; i<10; i++) lightRays.push({x: Math.random()*canvas.width, w: 50+Math.random()*100, a: Math.random(), s: 0.2+Math.random()*0.3});
+
+        for(let i=0; i<50; i++) ambientBubbles.push({x: Math.random()*canvas.width, y: CFG.waterLevel + Math.random()*CFG.seaFloor, s: Math.random()*3+1, v: Math.random()*30+20});
 
         if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
 
@@ -510,21 +510,7 @@ window.addEventListener('resize', resize);
 
 function genTerrain() {
 
-    rocksL = []; rocksR = []; parallaxMounts = []; mines = []; chests = []; powerups = [];
-
-    for(let i=0; i<15; i++) {
-
-        parallaxMounts.push({
-
-            x: Math.random() * canvas.width, y: CFG.waterLevel + Math.random() * CFG.seaFloor,
-
-            w: 100 + Math.random() * 200, h: 400 + Math.random() * 400,
-
-            c: Math.random() > 0.5 ? '#130f40' : '#0c2461'
-
-        });
-
-    }
+    rocksL = []; rocksR = []; mines = []; chests = []; powerups = [];
 
     let steps = 120, stepH = CFG.seaFloor / steps;
 
@@ -1064,6 +1050,8 @@ function updateEntities(dt) {
 
     }
 
+    ambientBubbles.forEach(b => { b.y -= b.v * dt; if(b.y < CFG.waterLevel) b.y = CFG.seaFloor + Math.random()*200; });
+
     for(let i=floatingTexts.length-1; i>=0; i--) {
 
         let t = floatingTexts[i]; t.y -= 40 * dt; t.life -= dt;
@@ -1086,25 +1074,31 @@ function draw() {
 
     ctx.translate(sx, sy - state.camY);
 
-    ctx.fillStyle = CFG.colors.sky; ctx.fillRect(0, state.camY-100, canvas.width, canvas.height+200);
+    // Sky Gradient
 
-    let grad = ctx.createLinearGradient(0, CFG.waterLevel, 0, CFG.seaFloor);
+    let skyGrad = ctx.createLinearGradient(0, state.camY-100, 0, CFG.waterLevel);
 
-    grad.addColorStop(0, '#006266'); grad.addColorStop(0.4, '#001e3c'); grad.addColorStop(1, '#000000');
+    skyGrad.addColorStop(0, CFG.colors.sky[0]); skyGrad.addColorStop(1, CFG.colors.sky[1]);
 
-    ctx.fillStyle = grad; ctx.fillRect(0, CFG.waterLevel, canvas.width, CFG.seaFloor+1000);
+    ctx.fillStyle = skyGrad; ctx.fillRect(0, state.camY-100, canvas.width, CFG.waterLevel - (state.camY-100));
 
-    ctx.save(); ctx.translate(0, state.camY * 0.5);
+    // Water Gradient
 
-    parallaxMounts.forEach(m => {
+    let waterGrad = ctx.createLinearGradient(0, CFG.waterLevel, 0, CFG.seaFloor);
 
-        ctx.fillStyle = m.c; ctx.beginPath(); 
+    waterGrad.addColorStop(0, CFG.colors.surface[0]); 
 
-        ctx.moveTo(m.x, m.y); ctx.lineTo(m.x - m.w, m.y + m.h); ctx.lineTo(m.x + m.w, m.y + m.h); ctx.fill();
+    waterGrad.addColorStop(0.4, CFG.colors.surface[1]); 
 
-    });
+    waterGrad.addColorStop(1, CFG.colors.surface[2]);
 
-    ctx.restore();
+    ctx.fillStyle = waterGrad; ctx.fillRect(0, CFG.waterLevel, canvas.width, CFG.seaFloor+1000);
+
+    // Ambient Bubbles
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+
+    ambientBubbles.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, b.s, 0, Math.PI*2); ctx.fill(); });
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
 
@@ -1123,6 +1117,10 @@ function draw() {
     if(player.y > CFG.seaFloor - 1000) {
 
         ctx.fillStyle = patSand || '#95a5a6'; ctx.fillRect(0, CFG.seaFloor, canvas.width, 500);
+
+        // Distant seabed layer
+
+        ctx.fillStyle = '#000408'; ctx.fillRect(0, CFG.seaFloor + 300, canvas.width, 500);
 
     }
 
@@ -1358,43 +1356,49 @@ function drawPlayer() {
 
 function drawFishTextured(f) {
 
-    ctx.save(); ctx.translate(f.x, f.y); ctx.scale(f.facing*f.scale, f.scale);
+    ctx.save();
 
-    if(f.hitFlash > 0) ctx.fillStyle = '#fff'; else ctx.fillStyle = f.col;
+    ctx.translate(f.x, f.y);
 
-    ctx.beginPath(); ctx.moveTo(15, 0); ctx.bezierCurveTo(5, -15, -15, -10, -20, 0); ctx.bezierCurveTo(-15, 10, 5, 15, 15, 0); ctx.fill();
+    ctx.scale(f.facing * f.scale, f.scale);
 
-    if (!f.hitFlash) {
+    if (f.hitFlash > 0) {
 
-        ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+        ctx.fillStyle = '#fff';
 
-        ctx.beginPath(); for(let i=-10; i<10; i+=5) { ctx.moveTo(i, -5); ctx.quadraticCurveTo(i+2, 0, i, 5); } ctx.stroke();
+        ctx.strokeStyle = '#fff';
 
-    }
-
-    let tail = Math.sin(f.anim)*5;
-
-    ctx.fillStyle = f.hitFlash > 0 ? '#fff' : f.col;
-
-    ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-30, -10+tail); ctx.lineTo(-30, 10+tail); ctx.closePath(); ctx.fill();
-
-    ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(8, -4, 4, 0, Math.PI*2); ctx.fill();
-
-    ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(9, -4, 1.5, 0, Math.PI*2); ctx.fill();
-
-    if(f.spikes) {
+    } else {
 
         ctx.fillStyle = f.col;
 
-        for(let i=0; i<6; i++) {
-
-            let a = i*(Math.PI/3); ctx.beginPath(); ctx.moveTo(Math.cos(a)*15, Math.sin(a)*10); ctx.lineTo(Math.cos(a)*22, Math.sin(a)*15); ctx.lineTo(Math.cos(a+0.2)*15, Math.sin(a+0.2)*10); ctx.fill();
-
-        }
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
 
     }
 
-    if(f.hp < f.maxHp) {
+    ctx.lineWidth = 1;
+
+    switch(f.type) {
+
+        case 'jelly': drawJellyfish(f); break;
+
+        case 'shark': drawShark(f); break;
+
+        case 'boss': drawLeviathan(f); break;
+
+        case 'ray': drawStingray(f); break;
+
+        case 'puffer': drawPuffer(f); break;
+
+        case 'angler': drawAnglerfish(f); break;
+
+        default: drawGenericFish(f); break;
+
+    }
+
+    // Health Bar
+
+    if(f.hp < f.maxHp && f.hitFlash <= 0 && f.type !== 'jelly') {
 
         ctx.fillStyle = 'red'; ctx.fillRect(-10, -20, 20, 4);
 
@@ -1403,6 +1407,318 @@ function drawFishTextured(f) {
     }
 
     ctx.restore();
+
+}
+
+function drawLeviathan(f) {
+
+    // Ancient Serpent Body
+
+    let wiggle = Math.sin(f.anim * 0.5) * 5;
+
+    // Main Body Segment
+
+    ctx.beginPath();
+
+    ctx.moveTo(40, 0);
+
+    ctx.quadraticCurveTo(20, -25, -40, -15 + wiggle);
+
+    ctx.lineTo(-60, 0 + wiggle);
+
+    ctx.lineTo(-40, 15 + wiggle);
+
+    ctx.quadraticCurveTo(20, 25, 40, 0);
+
+    ctx.fill();
+
+    // Armor Plates
+
+    if (!f.hitFlash) {
+
+        ctx.fillStyle = '#a93226'; // Darker red plates
+
+        ctx.beginPath(); ctx.moveTo(10, -18); ctx.lineTo(-10, -12 + wiggle); ctx.lineTo(-10, 12 + wiggle); ctx.lineTo(10, 18); ctx.fill();
+
+        ctx.beginPath(); ctx.moveTo(-20, -15 + wiggle); ctx.lineTo(-40, -10 + wiggle); ctx.lineTo(-40, 10 + wiggle); ctx.lineTo(-20, 15 + wiggle); ctx.fill();
+
+    }
+
+    // Massive Tail
+
+    ctx.fillStyle = f.col;
+
+    if (f.hitFlash > 0) ctx.fillStyle = '#fff';
+
+    ctx.beginPath();
+
+    ctx.moveTo(-60, 0 + wiggle);
+
+    ctx.lineTo(-90, -20 + wiggle * 2);
+
+    ctx.lineTo(-80, 0 + wiggle);
+
+    ctx.lineTo(-90, 20 + wiggle * 2);
+
+    ctx.fill();
+
+    // Glowing Eye
+
+    if (!f.hitFlash) {
+
+        ctx.fillStyle = '#f1c40f';
+
+        ctx.shadowBlur = 20; ctx.shadowColor = '#f1c40f';
+
+        ctx.beginPath(); ctx.arc(25, -8, 4, 0, Math.PI*2); ctx.fill();
+
+        ctx.shadowBlur = 0;
+
+    }
+
+    // Spikes
+
+    ctx.fillStyle = '#5c1515';
+
+    ctx.beginPath(); ctx.moveTo(-10, -12 + wiggle); ctx.lineTo(-5, -30 + wiggle); ctx.lineTo(0, -15 + wiggle); ctx.fill();
+
+}
+
+function drawGenericFish(f) {
+
+    ctx.beginPath(); ctx.moveTo(15, 0); ctx.bezierCurveTo(5, -15, -15, -10, -20, 0); ctx.bezierCurveTo(-15, 10, 5, 15, 15, 0); ctx.fill();
+
+    if (!f.hitFlash) {
+
+        ctx.beginPath(); for(let i=-10; i<10; i+=5) { ctx.moveTo(i, -5); ctx.quadraticCurveTo(i+2, 0, i, 5); } ctx.stroke();
+
+    }
+
+    let tail = Math.sin(f.anim)*5;
+
+    ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-30, -10+tail); ctx.lineTo(-30, 10+tail); ctx.closePath(); ctx.fill();
+
+    drawEye(8, -4);
+
+}
+
+function drawPuffer(f) {
+
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+
+    if(f.spikes) {
+
+        for(let i=0; i<8; i++) {
+
+            let a = i*(Math.PI/4);
+
+            ctx.beginPath(); ctx.moveTo(Math.cos(a)*15, Math.sin(a)*15);
+
+            ctx.lineTo(Math.cos(a)*22, Math.sin(a)*22);
+
+            ctx.lineTo(Math.cos(a+0.2)*15, Math.sin(a+0.2)*15); ctx.fill();
+
+        }
+
+    }
+
+    let tail = Math.sin(f.anim)*3;
+
+    ctx.beginPath(); ctx.moveTo(-15, 0); ctx.lineTo(-22, -5+tail); ctx.lineTo(-22, 5+tail); ctx.closePath(); ctx.fill();
+
+    drawEye(5, -5);
+
+}
+
+function drawJellyfish(f) {
+
+    ctx.globalAlpha = 0.7;
+
+    ctx.beginPath(); ctx.arc(0, -5, 15, Math.PI, 0); ctx.lineTo(15, 5); 
+
+    ctx.bezierCurveTo(5, 0, -5, 0, -15, 5); ctx.closePath(); ctx.fill();
+
+    ctx.globalAlpha = 0.5;
+
+    ctx.strokeStyle = f.col; ctx.lineWidth = 2;
+
+    let tOffset = Math.sin(f.anim)*3;
+
+    for(let i=-10; i<=10; i+=5) {
+
+        ctx.beginPath(); ctx.moveTo(i, 5);
+
+        ctx.quadraticCurveTo(i+tOffset, 15, i, 25);
+
+        ctx.quadraticCurveTo(i-tOffset, 35, i, 45); ctx.stroke();
+
+    }
+
+    ctx.globalAlpha = 1.0;
+
+}
+
+// --- REDESIGNED ANGLERFISH ---
+
+function drawAnglerfish(f) {
+
+    // Bulbous Body
+
+    ctx.beginPath();
+
+    ctx.ellipse(-5, 0, 25, 20, 0, 0, Math.PI * 2);
+
+    ctx.fill();
+
+    // Massive Underbite Jaw
+
+    ctx.beginPath();
+
+    ctx.moveTo(5, 5);
+
+    ctx.quadraticCurveTo(25, 25, 40, 15); // Lower lip
+
+    ctx.lineTo(10, 25);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    // Needle Teeth (White)
+
+    if (!f.hitFlash) ctx.fillStyle = 'white';
+
+    ctx.beginPath();
+
+    // Upper teeth
+
+    ctx.moveTo(15, 0); ctx.lineTo(17, 8); ctx.lineTo(19, 0);
+
+    ctx.moveTo(22, 0); ctx.lineTo(24, 6); ctx.lineTo(26, 0);
+
+    // Lower teeth (prominent & irregular)
+
+    ctx.moveTo(25, 18); ctx.lineTo(27, 8); ctx.lineTo(29, 18);
+
+    ctx.moveTo(32, 15); ctx.lineTo(34, 5); ctx.lineTo(36, 15);
+
+    ctx.moveTo(38, 12); ctx.lineTo(39, 4); ctx.lineTo(40, 12);
+
+    ctx.fill();
+
+    // Revert color for body parts if not flashing
+
+    if (!f.hitFlash) ctx.fillStyle = f.col;
+
+    // Lure Stalk
+
+    ctx.strokeStyle = '#555';
+
+    ctx.lineWidth = 3;
+
+    let sway = Math.sin(f.anim * 0.5) * 8;
+
+    ctx.beginPath();
+
+    ctx.moveTo(5, -18); // Forehead
+
+    ctx.quadraticCurveTo(30 + sway, -50, 50 + sway, -30);
+
+    ctx.stroke();
+
+    // Glowing Bulb
+
+    if (!f.hitFlash) {
+
+        ctx.fillStyle = '#00ffff';
+
+        ctx.shadowBlur = 20; ctx.shadowColor = '#00ffff';
+
+    }
+
+    ctx.beginPath(); ctx.arc(50 + sway, -30, 6, 0, Math.PI*2); ctx.fill();
+
+    ctx.shadowBlur = 0; // Reset shadow
+
+    // Small, Mean Eye
+
+    if (!f.hitFlash) {
+
+        ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.arc(10, -10, 4, 0, Math.PI*2); ctx.fill();
+
+        ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(11, -10, 1.5, 0, Math.PI*2); ctx.fill();
+
+    }
+
+    // Tattered Tail
+
+    let tail = Math.sin(f.anim) * 3;
+
+    if (!f.hitFlash) ctx.fillStyle = f.col; // Ensure body color
+
+    ctx.beginPath();
+
+    ctx.moveTo(-28, 0);
+
+    ctx.lineTo(-40, -12 + tail);
+
+    ctx.lineTo(-35, 0 + tail); // Jagged middle
+
+    ctx.lineTo(-40, 12 + tail);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+}
+
+function drawShark(f) {
+
+    ctx.beginPath(); ctx.moveTo(25, 0); ctx.quadraticCurveTo(10, -12, -15, -8);
+
+    ctx.lineTo(-30, 0); ctx.lineTo(-15, 8); ctx.quadraticCurveTo(10, 12, 25, 0); ctx.fill();
+
+    ctx.beginPath(); ctx.moveTo(5, -10); ctx.lineTo(15, -25); ctx.lineTo(20, -12); ctx.fill();
+
+    let tail = Math.sin(f.anim)*8;
+
+    ctx.beginPath(); ctx.moveTo(-30, 0); ctx.lineTo(-45, -15+tail); 
+
+    ctx.lineTo(-38, 0); ctx.lineTo(-45, 15+tail); ctx.closePath(); ctx.fill();
+
+    drawEye(15, -4);
+
+    if(!f.hitFlash) {
+
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
+
+        for(let i=0; i<3; i++) { ctx.beginPath(); ctx.moveTo(0+i*3, -5); ctx.lineTo(0+i*3, 5); ctx.stroke(); }
+
+    }
+
+}
+
+function drawStingray(f) {
+
+    ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(0, -15); ctx.lineTo(-20, 0); ctx.lineTo(0, 15); ctx.closePath(); ctx.fill();
+
+    let flap = Math.sin(f.anim)*10;
+
+    ctx.beginPath(); ctx.moveTo(0, -15); ctx.quadraticCurveTo(20, -15-flap, 35, 0); ctx.quadraticCurveTo(20, 15+flap, 0, 15); ctx.fill();
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath(); ctx.moveTo(-20, 0); ctx.quadraticCurveTo(-40, Math.sin(f.anim)*5, -60, 0); ctx.stroke();
+
+    drawEye(5, -5); drawEye(5, 5);
+
+}
+
+function drawEye(x, y) {
+
+    ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(x+1, y, 1.5, 0, Math.PI*2); ctx.fill();
 
 }
 
@@ -1441,8 +1757,6 @@ function drawLighting() {
     const dStart = CFG.darkDepth;
 
     if(depth < dStart) {
-
-        // Sun rays
 
         ctx.save(); ctx.globalCompositeOperation = 'overlay';
 
@@ -1510,13 +1824,7 @@ function openShop() {
 
     state.screen = 'shop'; player.curO2 = player.maxO2;
 
-    // Reset Powerups
-
-    player.doubleCapacity = false;
-
-    player.invincibleTimer = 0;
-
-    player.capacity = (10 + (player.suitLvl-1)*5); // Reset to base
+    player.doubleCapacity = false; player.invincibleTimer = 0; player.capacity = (10 + (player.suitLvl-1)*5);
 
     document.getElementById('modal-overlay').style.display = 'flex'; updateShopUI();
 
@@ -1649,8 +1957,6 @@ function loop(now) {
         requestAnimationFrame(loop);
 
     } catch (e) {
-
-        // Last resort crash handler
 
         document.getElementById('error-log').style.display = 'block';
 
