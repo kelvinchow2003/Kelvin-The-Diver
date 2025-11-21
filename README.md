@@ -26,8 +26,6 @@ You play as Kelvin, a diver seeking fortune in the deep. Your goal is to harpoon
 
 | Action | Desktop (Keyboard/Mouse) | Mobile (Touch) |
 
-| :--- | :--- | :--- |
-
 | **Move** | `W`, `A`, `S`, `D` | Left Virtual Joystick |
 
 | **Aim** | Mouse Cursor | Right Virtual Joystick |
