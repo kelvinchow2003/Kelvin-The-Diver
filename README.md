@@ -1,4 +1,4 @@
-# ⚓ Kelvin The Diver (v6.3)
+# ⚓ Kelvin The Diver (v6.4)
 
 **Kelvin The Diver** is a browser-based underwater exploration and survival game built entirely in vanilla JavaScript and HTML5 Canvas. Dive into the abyss, manage your oxygen, battle deep-sea creatures, and upgrade your gear to face the Leviathan.
 
