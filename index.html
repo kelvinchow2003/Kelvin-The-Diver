@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Kelvin The Diver v6.4 - Leviathan Update</title>
+<title>Kelvin The Diver v6.7 - Visual Fixes</title>
 <style>
 
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;800&display=swap');
@@ -296,7 +296,7 @@
 
 /**
 
- * Kelvin The Diver v6.4 - Leviathan Update
+ * Kelvin The Diver v6.7 - Visual Fixes
 
  */
 
@@ -446,9 +446,9 @@ const FISH_TYPES = [
 
     { name: "Angler", depth: [3000, 7500], hp: 8, val: 250, w: 8, spd: 160, col: '#4834d4', scale: 2.2, type: 'angler', aggro: true, glow: true },
 
-    // UPDATED LEVIATHAN: Massive Scale (5.0), Higher HP (300), Slower Speed (160) for weight
+    // LEVIATHAN BOSS
 
-    { name: "LEVIATHAN", depth: [7800, 8500], hp: 300, val: 5000, w: 100, spd: 160, col: '#a93226', scale: 5.0, type: 'boss', aggro: true, glow: true, isBoss: true }
+    { name: "LEVIATHAN", depth: [7800, 8500], hp: 300, val: 5000, w: 80, spd: 180, col: '#a93226', scale: 4.0, type: 'boss', aggro: true, glow: true, isBoss: true }
 
 ];
 
@@ -909,8 +909,6 @@ function updateFish(dt) {
         const sy = Math.max(CFG.waterLevel+200, type.depth[0] + Math.random()*(type.depth[1]-type.depth[0]));
 
         if(Math.abs(sy - player.y) < 1500) {
-
-             // Boss needs a larger spawn offset so it doesn't pop in on screen
 
              const offset = type.isBoss ? 400 : 100;
 
@@ -1442,109 +1440,93 @@ function drawFishTextured(f) {
 
 }
 
-// --- UPDATED GIANT LEVIATHAN RENDERER ---
-
 function drawLeviathan(f) {
 
-    let wiggle = Math.sin(f.anim * 2) * 15; // Heavy, slow movement
+    // Draw Body Segments (Trailing behind)
 
-    // 1. Giant Tail Fin
+    for(let i=8; i>=1; i--) {
 
-    ctx.fillStyle = '#5e0000'; // Dark blood red
+        let size = 25 * (1 - i/12);
 
-    ctx.beginPath();
+        let spacing = 20;
 
-    ctx.moveTo(-70, 0);
+        let wave = Math.sin(f.anim * 3 + i) * 15; 
 
-    ctx.lineTo(-120, -50 + wiggle);
+        let bx = -30 - (i * spacing);
 
-    ctx.lineTo(-100, 0 + wiggle/2);
+        let by = wave;
 
-    ctx.lineTo(-120, 50 + wiggle);
-
-    ctx.closePath();
-
-    ctx.fill();
-
-    // 2. Main Body (Muscular/Thick)
-
-    ctx.fillStyle = f.col; // Base Red
-
-    if (f.hitFlash > 0) ctx.fillStyle = '#fff';
-
-    // Draw a more complex body shape
-
-    ctx.beginPath();
-
-    ctx.moveTo(60, 0); // Snout
-
-    ctx.bezierCurveTo(40, -45, -50, -40, -80, 0); // Top curve
-
-    ctx.bezierCurveTo(-50, 40, 40, 45, 60, 0);   // Bottom curve
-
-    ctx.fill();
-
-    // 3. Armor/Scales (Detailing)
-
-    if (!f.hitFlash) {
-
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-
-        // Side stripe
+        ctx.fillStyle = f.col; 
 
         ctx.beginPath();
 
-        ctx.moveTo(50, 0);
-
-        ctx.lineTo(-70, -10 + wiggle/2);
-
-        ctx.lineTo(-70, 10 + wiggle/2);
+        ctx.arc(bx, by, size + 10, 0, Math.PI*2);
 
         ctx.fill();
 
-        // Spikes on back
+        // Dorsal fins
 
-        ctx.fillStyle = '#2c0404';
+        if (!f.hitFlash) {
 
-        ctx.beginPath();
+            ctx.fillStyle = '#5e0000'; 
 
-        ctx.moveTo(-20, -35); ctx.lineTo(-10, -60); ctx.lineTo(0, -38);
+            ctx.beginPath();
 
-        ctx.moveTo(10, -38); ctx.lineTo(25, -65); ctx.lineTo(35, -35);
+            ctx.moveTo(bx, by - size - 5);
 
-        ctx.fill();
+            ctx.lineTo(bx + 5, by - size - 20);
 
-    }
+            ctx.lineTo(bx - 5, by - size - 5);
 
-    // 4. The Eye (Glowing Slit)
+            ctx.fill();
 
-    if (!f.hitFlash) {
-
-        ctx.shadowBlur = 30; ctx.shadowColor = '#f1c40f';
-
-        ctx.fillStyle = '#f1c40f';
-
-        ctx.beginPath(); ctx.arc(35, -15, 8, 0, Math.PI*2); ctx.fill();
-
-        ctx.shadowBlur = 0;
-
-        ctx.fillStyle = 'black';
-
-        ctx.beginPath(); ctx.ellipse(35, -15, 2, 6, 0, 0, Math.PI*2); ctx.fill();
+        }
 
     }
 
-    // 5. Massive Underbite Teeth
+    // Head
 
-    ctx.fillStyle = '#ecf0f1';
+    ctx.fillStyle = f.col;
 
     ctx.beginPath();
 
-    ctx.moveTo(55, 10); ctx.lineTo(60, -5); ctx.lineTo(65, 10); // Bottom tooth
+    ctx.moveTo(20, -15);
 
-    ctx.moveTo(40, 15); ctx.lineTo(45, 0); ctx.lineTo(50, 15); // Bottom tooth
+    ctx.lineTo(60, 5); 
+
+    ctx.lineTo(20, 20); 
+
+    ctx.quadraticCurveTo(-10, 30, -30, 10); 
+
+    ctx.lineTo(-30, -20);
+
+    ctx.lineTo(20, -15);
 
     ctx.fill();
+
+    // Eyes (Yellow glow) - FIXED: No longer hides on hitFlash
+
+    ctx.fillStyle = '#f1c40f';
+
+    ctx.shadowBlur = 20; ctx.shadowColor = '#f1c40f';
+
+    ctx.beginPath(); ctx.arc(25, -5, 6, 0, Math.PI*2); ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = 'black'; 
+
+    ctx.beginPath(); ctx.ellipse(25, -5, 2, 6, 0, 0, Math.PI*2); ctx.fill();
+
+    // Horns
+
+    if (!f.hitFlash) {
+
+        ctx.fillStyle = '#dac5a6'; 
+
+        ctx.beginPath(); ctx.moveTo(0, -15); ctx.quadraticCurveTo(10, -40, -20, -50); ctx.lineTo(-5, -15); ctx.fill();
+
+    }
 
 }
 
@@ -1628,7 +1610,9 @@ function drawAnglerfish(f) {
 
     ctx.beginPath(); ctx.moveTo(5, 5); ctx.quadraticCurveTo(25, 25, 40, 15); ctx.lineTo(10, 25); ctx.closePath(); ctx.fill();
 
-    if (!f.hitFlash) ctx.fillStyle = 'white';
+    // TEETH FIXED: Always White
+
+    ctx.fillStyle = 'white';
 
     ctx.beginPath();
 
@@ -1644,6 +1628,8 @@ function drawAnglerfish(f) {
 
     ctx.fill();
 
+    // Reset fill if not flashing for the lure/tail parts
+
     if (!f.hitFlash) ctx.fillStyle = f.col;
 
     ctx.strokeStyle = '#555'; ctx.lineWidth = 3;
@@ -1652,11 +1638,13 @@ function drawAnglerfish(f) {
 
     ctx.beginPath(); ctx.moveTo(5, -18); ctx.quadraticCurveTo(30 + sway, -50, 50 + sway, -30); ctx.stroke();
 
-    if (!f.hitFlash) { ctx.fillStyle = '#00ffff'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffff'; }
+    ctx.fillStyle = '#00ffff'; ctx.shadowBlur = 20; ctx.shadowColor = '#00ffff';
 
     ctx.beginPath(); ctx.arc(50 + sway, -30, 6, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
 
-    if (!f.hitFlash) { ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.arc(10, -10, 4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(11, -10, 1.5, 0, Math.PI*2); ctx.fill(); }
+    ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.arc(10, -10, 4, 0, Math.PI*2); ctx.fill(); 
+
+    ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(11, -10, 1.5, 0, Math.PI*2); ctx.fill(); 
 
     let tail = Math.sin(f.anim) * 3;
 
