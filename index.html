@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Kelvin The Diver 6.1<v6 class="1"></v6></title>
+<title>Kelvin The Diver v6.3</title>
 <style>
 
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;800&display=swap');
@@ -296,11 +296,11 @@
 
 /**
 
- * Deep Blue Diver v6.2 - The Angler's Maw
+ * Deep Blue Diver v6.3 - The Culling Update
 
  * Changes: 
 
- * 1. Completely redesigned Anglerfish with a more prominent jaw and a full set of needle-like teeth, as requested.
+ * 1. If inventory is full, reducing a fish to 0 HP kills it immediately instead of hooking it.
 
  */
 
@@ -810,9 +810,39 @@ function updateHarpoons(dt) {
 
                         spawnText(`-${player.harpoonDmg}`, f.x, f.y - 20, '#e74c3c');
 
-                        if(f.hp <= 0) { h.state = 'hooked'; h.target = f; h.vx = 0; h.vy = 0; }
+                        if(f.hp <= 0) {
 
-                        else { h.state = 'retracting'; f.aggro = true; f.hitFlash = 0.2; f.vx += h.vx * 0.3; }
+                            // Check capacity before hooking
+
+                            const currentWeight = player.inventory.reduce((a,b)=>a+b.w,0);
+
+                            if (currentWeight + f.w <= player.capacity) {
+
+                                // Fits: Hook it
+
+                                h.state = 'hooked'; h.target = f; h.vx = 0; h.vy = 0;
+
+                            } else {
+
+                                // Full: Kill it immediately
+
+                                spawnText("ELIMINATED!", f.x, f.y, '#e74c3c');
+
+                                for(let k=0; k<15; k++) bubbles.push({x: f.x, y: f.y, s: Math.random()*4+2, v: Math.random()*100+50, col: '#c0392b'});
+
+                                const fIdx = fishes.indexOf(f);
+
+                                if(fIdx > -1) fishes.splice(fIdx, 1);
+
+                                h.state = 'retracting';
+
+                            }
+
+                        } else {
+
+                            h.state = 'retracting'; f.aggro = true; f.hitFlash = 0.2; f.vx += h.vx * 0.3;
+
+                        }
 
                         break;
 
@@ -861,6 +891,8 @@ function catchFish(f) {
         spawnText(`+${f.name}`, player.x, player.y - 50, '#f1c40f');
 
     } else {
+
+        // Fallback in case it was hooked but filled up later (rare)
 
         spawnText("FULL!", player.x, player.y - 50, '#e74c3c');
 
